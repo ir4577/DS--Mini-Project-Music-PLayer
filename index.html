@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>DLL Music Studio Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+        body { background: #0f0f12; color: #fff; padding: 30px; display: flex; flex-direction: column; gap: 24px; }
+        
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #27272a; padding-bottom: 16px; }
+        .header h1 { font-size: 24px; color: #1db954; display: flex; align-items: center; gap: 10px; }
+        .badge { background: #27272a; padding: 6px 12px; border-radius: 20px; font-size: 12px; color: #a1a1aa; }
+
+        .dashboard-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 24px; }
+        .card { background: #18181b; border: 1px solid #27272a; border-radius: 12px; padding: 20px; }
+
+        .player-hero { display: flex; flex-direction: column; gap: 16px; background: linear-gradient(135deg, #054f21, #18181b); }
+        .track-info h2 { font-size: 28px; margin-bottom: 4px; }
+        .track-info p { color: #a1a1aa; font-size: 16px; }
+        
+        .controls { display: flex; gap: 12px; margin-top: 12px; align-items: center; }
+        button { background: #27272a; border: none; color: #fff; padding: 10px 18px; border-radius: 8px; cursor: pointer; font-weight: 600; transition: 0.2s; }
+        button:hover { background: #3f3f46; }
+        button.primary { background: #1db954; color: #000; }
+        button.primary:hover { background: #1ed760; }
+
+        audio { width: 100%; height: 40px; margin-top: 10px; border-radius: 8px; outline: none; }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+        th, td { text-align: left; padding: 12px; border-bottom: 1px solid #27272a; font-size: 14px; }
+        th { color: #71717a; text-transform: uppercase; font-size: 12px; }
+        tr.active-row { background: rgba(29, 185, 84, 0.15); color: #1db954; font-weight: 600; }
+
+        input { width: 100%; padding: 10px; margin: 6px 0; background: #27272a; border: 1px solid #3f3f46; color: #fff; border-radius: 6px; font-size: 14px; }
+        input:focus { outline: none; border-color: #1db954; }
+
+        .dll-visualizer { display: flex; align-items: center; gap: 12px; overflow-x: auto; padding: 16px 0; }
+        .dll-node { background: #27272a; border: 2px solid #3f3f46; padding: 12px; border-radius: 8px; min-width: 140px; text-align: center; }
+        .dll-node.active { border-color: #1db954; box-shadow: 0 0 12px rgba(29, 185, 84, 0.4); }
+        .dll-pointer { color: #1db954; font-size: 18px; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>♪ Doubly Linked List Music Studio</h1>
+        <div class="badge">C Engine Port 8080 Active</div>
+    </div>
+
+    <div class="card player-hero">
+        <div class="track-info">
+            <p>NOW PLAYING</p>
+            <h2 id="hero-title">Loading...</h2>
+            <p id="hero-artist">...</p>
+            <div class="controls">
+                <button onclick="sendAction('/api/prev')">⏮ Prev</button>
+                <button onclick="sendAction('/api/next')">Next ⏭</button>
+                <button onclick="sendAction('/api/delete')">🗑 Delete</button>
+            </div>
+            <audio id="audio-player" controls></audio>
+        </div>
+    </div>
+
+    <div class="dashboard-grid">
+        <div class="card">
+            <h3>Playlist Queue</h3>
+            <table>
+                <thead>
+                    <tr><th>#</th><th>Title</th><th>Artist</th><th>Duration</th></tr>
+                </thead>
+                <tbody id="playlist-body"></tbody>
+            </table>
+        </div>
+
+        <div class="card">
+            <h3>Data Structure Controls</h3>
+            <div style="display:flex; flex-direction:column; gap:10px; margin-top:12px;">
+                <button onclick="sendAction('/api/sort_name')">🔤 Sort by Name (A-Z)</button>
+                <button onclick="sendAction('/api/sort_time')">⏱️ Sort by Duration (Time)</button>
+            </div>
+
+            <h3 style="margin-top:24px;">Add Track to Node List</h3>
+            <input id="in-title" placeholder="Track Title">
+            <input id="in-artist" placeholder="Artist Name">
+            <input id="in-duration" type="number" placeholder="Duration in seconds (e.g., 210)">
+            <input id="in-filename" placeholder="MP3 Filename (e.g. song.mp3) or direct URL">
+            <button class="primary" style="width:100%; margin-top:8px;" onclick="addTrack()">+ Allocate New Song Node</button>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3>Live Doubly Linked List Pointer Map</h3>
+        <p style="font-size: 12px; color: #71717a; margin-bottom: 10px;">Visual representation of Heap allocated memory pointers (prev ⇄ next)</p>
+        <div class="dll-visualizer" id="dll-map"></div>
+    </div>
+
+    <script>
+        async function fetchState() {
+            const res = await fetch('/api/data');
+            const data = await res.json();
+            renderUI(data);
+        }
+
+        async function sendAction(endpoint) {
+            const res = await fetch(endpoint);
+            const data = await res.json();
+            renderUI(data);
+        }
+
+        async function addTrack() {
+            const title = document.getElementById('in-title').value.trim() || 'Untitled';
+            const artist = document.getElementById('in-artist').value.trim() || 'Unknown';
+            const duration = parseInt(document.getElementById('in-duration').value) || 180;
+            const filename = document.getElementById('in-filename').value.trim();
+
+            await fetch('/api/add', {
+                method: 'POST',
+                body: `title=${encodeURIComponent(title)}&artist=${encodeURIComponent(artist)}&duration=${duration}&filename=${encodeURIComponent(filename)}`
+            });
+
+            document.getElementById('in-title').value = '';
+            document.getElementById('in-artist').value = '';
+            document.getElementById('in-duration').value = '';
+            document.getElementById('in-filename').value = '';
+
+            fetchState();
+        }
+
+        function renderUI(data) {
+            const body = document.getElementById('playlist-body');
+            const map = document.getElementById('dll-map');
+            const audioPlayer = document.getElementById('audio-player');
+            body.innerHTML = '';
+            map.innerHTML = '<span class="dll-pointer">NULL ⇄</span>';
+
+            let currentTrack = null;
+
+            data.songs.forEach((song, idx) => {
+                if(song.is_current) currentTrack = song;
+
+                body.innerHTML += `
+                    <tr class="${song.is_current ? 'active-row' : ''}">
+                        <td>${idx + 1}</td>
+                        <td>${song.title}</td>
+                        <td>${song.artist}</td>
+                        <td>${Math.floor(song.duration/60)}m ${song.duration%60}s (${song.duration}s)</td>
+                    </tr>`;
+
+                map.innerHTML += `
+                    <div class="dll-node ${song.is_current ? 'active' : ''}">
+                        <div style="font-size:10px; color:#71717a;">Node #${idx+1} [${song.duration}s]</div>
+                        <strong>${song.title}</strong>
+                    </div>
+                    <span class="dll-pointer">⇄</span>`;
+            });
+
+            map.innerHTML += '<span class="dll-pointer">NULL</span>';
+
+            if(currentTrack) {
+                document.getElementById('hero-title').innerText = currentTrack.title;
+                document.getElementById('hero-artist').innerText = `${currentTrack.artist} • [${Math.floor(currentTrack.duration/60)}m ${currentTrack.duration%60}s]`;
+                
+                if (currentTrack.filename && audioPlayer.dataset.src !== currentTrack.filename) {
+                    audioPlayer.dataset.src = currentTrack.filename;
+                    audioPlayer.src = currentTrack.filename;
+                    audioPlayer.play().catch(() => {});
+                }
+            }
+        }
+
+        fetchState();
+    </script>
+</body>
+</html>
