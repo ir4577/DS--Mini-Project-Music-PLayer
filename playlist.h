@@ -42,7 +42,7 @@ void freePlaylist(Playlist *pl);
 
 // Data Structures: Search & Sort
 int linearSearch(const Playlist *pl, const char *title);
-int binarySearch(Playlist *pl, const char *title);
+int binarySearch(const Playlist *pl, const char *title);
 void bubbleSort(Playlist *pl, int sortBy); // 0 = Name, 1 = Time
 void mergeSort(Playlist *pl, int sortBy);  // 0 = Name, 1 = Time
 

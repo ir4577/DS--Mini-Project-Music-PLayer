@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <string.h>
 #include "playlist.h"
+void clearInputBuffer(void);
+void renderUI(Playlist *pl);
 
 void handleSearchMenu(Playlist *pl) {
     char searchTitle[MAX_STR];
@@ -30,15 +32,14 @@ void handleSearchMenu(Playlist *pl) {
 void handleSortMenu(Playlist *pl) {
     int choice = 0;
 
-    printf("\n=== SORT MENU ===\n");
+    printf("\n SORT MENU \n");
     printf("1. Bubble Sort O(N^2)\n");
     printf("2. Merge Sort  O(N log N)\n");
     printf("Choice: ");
     if (scanf("%d", &choice) != 1) { clearInputBuffer(); return; }
     clearInputBuffer();
-
-    if (choice == 1) bubbleSort(pl);
-    else if (choice == 2) mergeSort(pl);
+    if (choice == 1) bubbleSort(pl, 0);
+    else if (choice == 2) mergeSort(pl, 0);
 
     printf("\n[SUCCESS] Playlist sorted!\n");
     printf("Press ENTER to continue...");
@@ -50,10 +51,10 @@ int main(void) {
     loadFromFile(myPlaylist, "library.txt");
 
     if (myPlaylist->size == 0) {
-        addSong(myPlaylist, "Hotel California", "Eagles", 390);
-        addSong(myPlaylist, "Bohemian Rhapsody", "Queen", 354);
-        addSong(myPlaylist, "Starboy", "The Weeknd", 230);
-        addSong(myPlaylist, "Africa", "Toto", 295);
+        addSong(myPlaylist, "Hotel California", "Eagles", 390, "");
+        addSong(myPlaylist, "Bohemian Rhapsody", "Queen", 354, "");
+        addSong(myPlaylist, "Starboy", "The Weeknd", 230, "");
+        addSong(myPlaylist, "Africa", "Toto", 295, "");
     }
 
     int choice = 0;
@@ -90,7 +91,7 @@ int main(void) {
                 scanf("%d", &duration);
                 clearInputBuffer();
 
-                addSong(myPlaylist, title, artist, duration);
+                addSong(myPlaylist, title, artist, duration, "");
                 break;
             case 4: deleteCurrentSong(myPlaylist); break;
             case 5: handleSearchMenu(myPlaylist); break;
